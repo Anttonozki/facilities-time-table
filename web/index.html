@@ -112,25 +112,55 @@
     pointer-events: none;
   }
 
-  /* Zoom controls */
+  /* Navigation controls (pan + zoom) */
   #zoom-controls {
     position: absolute;
-    bottom: 24px;
-    left: 24px;
+    bottom: max(24px, env(safe-area-inset-bottom));
+    left: max(24px, env(safe-area-inset-left));
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    z-index: 20;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    background: var(--panel-bg);
+    border-radius: 14px;
+    box-shadow: 0 2px 10px var(--shadow);
+    z-index: 50;
   }
+  .pan-pad {
+    display: grid;
+    grid-template-columns: repeat(3, 34px);
+    grid-template-rows: repeat(3, 34px);
+    gap: 3px;
+  }
+  .pan-btn {
+    border: none;
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  .pan-btn:hover { background: #fff; }
+  .pan-btn:active { transform: scale(0.92); }
+  .pan-btn.up { grid-area: 1 / 2; }
+  .pan-btn.left { grid-area: 2 / 1; }
+  .pan-btn.center { grid-area: 2 / 2; font-size: 13px; }
+  .pan-btn.right { grid-area: 2 / 3; }
+  .pan-btn.down { grid-area: 3 / 2; }
+  .zoom-group { display: flex; gap: 8px; }
   .zoom-btn {
     width: 40px;
     height: 40px;
     border-radius: 10px;
     border: none;
-    background: var(--panel-bg);
+    background: var(--bg);
     color: var(--ink);
     font-size: 20px;
-    box-shadow: 0 2px 8px var(--shadow);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -142,8 +172,8 @@
     font-size: 12px;
     width: auto;
     padding: 0 12px;
-    height: 34px;
-    border-radius: 8px;
+    height: 40px;
+    border-radius: 10px;
   }
 
   /* Legend */
@@ -440,9 +470,18 @@
   </div>
 
   <div id="zoom-controls">
-    <button class="zoom-btn" id="zoom-in" title="Acercar">+</button>
-    <button class="zoom-btn" id="zoom-out" title="Alejar">−</button>
-    <button class="zoom-btn" id="reset-view" title="Restablecer vista">Reset</button>
+    <div class="pan-pad">
+      <button class="pan-btn up" data-pan="0,-1" title="Subir">&#8593;</button>
+      <button class="pan-btn left" data-pan="-1,0" title="Izquierda">&#8592;</button>
+      <button class="pan-btn center" id="reset-view-pad" title="Centrar">&#8982;</button>
+      <button class="pan-btn right" data-pan="1,0" title="Derecha">&#8594;</button>
+      <button class="pan-btn down" data-pan="0,1" title="Bajar">&#8595;</button>
+    </div>
+    <div class="zoom-group">
+      <button class="zoom-btn" id="zoom-in" title="Acercar">+</button>
+      <button class="zoom-btn" id="zoom-out" title="Alejar">&#8722;</button>
+      <button class="zoom-btn" id="reset-view" title="Restablecer vista">Reset</button>
+    </div>
   </div>
 
   <div id="legend">
@@ -572,6 +611,31 @@
   document.getElementById('reset-view').addEventListener('click', () => {
     scale = 0.45;
     centerCanvas();
+  });
+  document.getElementById('reset-view-pad').addEventListener('click', () => {
+    scale = 0.45;
+    centerCanvas();
+  });
+
+  const PAN_STEP = 160;
+  document.querySelectorAll('[data-pan]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const [dx, dy] = btn.dataset.pan.split(',').map(Number);
+      tx -= dx * PAN_STEP;
+      ty -= dy * PAN_STEP;
+      applyTransform();
+    });
+  });
+
+  window.addEventListener('keydown', (e) => {
+    const keyMap = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
+    if (!keyMap[e.key]) return;
+    if (drawer.classList.contains('open')) return; // don't hijack scrolling inside drawer
+    e.preventDefault();
+    const [dx, dy] = keyMap[e.key];
+    tx -= dx * PAN_STEP;
+    ty -= dy * PAN_STEP;
+    applyTransform();
   });
 
   // ---- Room selection & drawer ----
