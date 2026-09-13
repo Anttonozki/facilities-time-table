@@ -1,0 +1,9 @@
+*.dwg
+*.dxf
+*.pdf
+*.jfif
+capas_sin_vegetacion.txt
+README.md
+.git/
+__pycache__/
+*.pyc

@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reservas · Aulas Secundaria</title>
+<style>
+  :root {
+    --bg: #f4ede1;
+    --panel-bg: #fbf7f0;
+    --ink: #3a332c;
+    --ink-soft: #6b6055;
+    --wall: #3a332c;
+    --room-fill: #e8d9bb;
+    --room-fill-hover: #ddc79a;
+    --room-fill-active: #8fae82;
+    --room-fill-disabled: #d8d2c4;
+    --accent: #6f8f5f;
+    --accent-dark: #55704a;
+    --slot-available: #bcd6b0;
+    --slot-available-hover: #a5c797;
+    --slot-selected: #d98f4a;
+    --slot-confirmed: #6f8f5f;
+    --slot-booked: #cbc3b6;
+    --shadow: rgba(58, 51, 44, 0.18);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    overflow: hidden;
+  }
+
+  #app {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  header.topbar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    background: linear-gradient(to bottom, rgba(244,237,225,0.98), rgba(244,237,225,0.85));
+    z-index: 20;
+    pointer-events: none;
+  }
+  header.topbar h1 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: 0.3px;
+  }
+  header.topbar .subtitle {
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+
+  #map-viewport {
+    position: absolute;
+    inset: 0;
+    cursor: grab;
+  }
+  #map-viewport.dragging { cursor: grabbing; }
+
+  #map-canvas {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform-origin: 0 0;
+    will-change: transform;
+  }
+
+  svg#floorplan {
+    display: block;
+    overflow: visible;
+  }
+
+  .room {
+    stroke: var(--wall);
+    stroke-width: 3;
+    fill: var(--room-fill);
+    transition: fill 0.15s ease;
+  }
+  .room.reservable { cursor: pointer; }
+  .room.reservable:hover { fill: var(--room-fill-hover); }
+  .room.reservable.active { fill: var(--room-fill-active); }
+  .room.non-reservable {
+    fill: var(--room-fill-disabled);
+    cursor: default;
+    opacity: 0.75;
+  }
+
+  .room-label {
+    font-size: 15px;
+    font-weight: 600;
+    fill: var(--ink);
+    text-anchor: middle;
+    pointer-events: none;
+    user-select: none;
+  }
+  .room-label.small { font-size: 11px; font-weight: 500; fill: var(--ink-soft); }
+
+  .path-line {
+    stroke: #e0d5c0;
+    stroke-width: 14;
+    stroke-linecap: round;
+    fill: none;
+    opacity: 0.6;
+  }
+
+  .tree {
+    fill: var(--accent);
+    opacity: 0.85;
+  }
+
+  /* Zoom controls */
+  #zoom-controls {
+    position: absolute;
+    bottom: 24px;
+    left: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 20;
+  }
+  .zoom-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    border: none;
+    background: var(--panel-bg);
+    color: var(--ink);
+    font-size: 20px;
+    box-shadow: 0 2px 8px var(--shadow);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .zoom-btn:hover { background: #fff; }
+  .zoom-btn:active { transform: scale(0.95); }
+  #reset-view {
+    font-size: 12px;
+    width: auto;
+    padding: 0 12px;
+    height: 34px;
+    border-radius: 8px;
+  }
+
+  /* Legend */
+  #legend {
+    position: absolute;
+    bottom: 24px;
+    right: 24px;
+    background: var(--panel-bg);
+    padding: 12px 16px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px var(--shadow);
+    font-size: 12px;
+    color: var(--ink-soft);
+    z-index: 20;
+    transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  #legend .row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+  #legend .swatch { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
+
+  /* Side drawer */
+  #drawer {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 25vw;
+    min-width: 320px;
+    max-width: 420px;
+    height: 100%;
+    background: var(--panel-bg);
+    box-shadow: -8px 0 24px var(--shadow);
+    transform: translateX(100%);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+  }
+  #drawer.open { transform: translateX(0); }
+
+  #drawer-header {
+    padding: 24px 24px 16px;
+    border-bottom: 1px solid #e6ddcb;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  #drawer-header .titles h2 {
+    margin: 0 0 4px;
+    font-size: 20px;
+  }
+  #drawer-header .titles p {
+    margin: 0;
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+  #drawer-close {
+    border: none;
+    background: none;
+    font-size: 22px;
+    color: var(--ink-soft);
+    cursor: pointer;
+    line-height: 1;
+    padding: 4px;
+  }
+  #drawer-close:hover { color: var(--ink); }
+
+  #drawer-body {
+    padding: 20px 24px;
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  #drawer-body h3 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--ink-soft);
+    margin: 0 0 12px;
+  }
+
+  table#schedule {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+  table#schedule th {
+    font-weight: 600;
+    padding: 4px 2px 8px;
+    color: var(--ink-soft);
+    font-size: 11px;
+  }
+  table#schedule th.time-col { width: 52px; }
+  table#schedule td {
+    padding: 2px;
+    text-align: center;
+  }
+  table#schedule .time-label {
+    font-size: 10px;
+    color: var(--ink-soft);
+    text-align: right;
+    padding-right: 6px;
+    white-space: nowrap;
+  }
+  .slot {
+    display: block;
+    width: 100%;
+    height: 28px;
+    border-radius: 6px;
+    border: none;
+    background: var(--slot-available);
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+  .slot:hover:not(.booked):not(.confirmed) { background: var(--slot-available-hover); transform: scale(1.04); }
+  .slot.booked { background: var(--slot-booked); cursor: not-allowed; }
+  .slot.selected { background: var(--slot-selected); }
+  .slot.confirmed { background: var(--slot-confirmed); cursor: default; }
+  .slot.confirmed::after { content: '✓'; color: #fff; font-size: 13px; }
+
+  #selection-summary {
+    margin-top: 20px;
+    padding: 14px 16px;
+    background: #efe7d8;
+    border-radius: 10px;
+    font-size: 13px;
+    display: none;
+  }
+  #selection-summary.show { display: block; }
+  #selection-summary strong { display: block; margin-bottom: 4px; }
+
+  #confirm-btn {
+    margin-top: 12px;
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  #confirm-btn:hover { background: var(--accent-dark); }
+  #confirm-btn:disabled {
+    background: #bdb6a6;
+    cursor: default;
+  }
+
+  #toast {
+    position: absolute;
+    top: 24px;
+    left: 50%;
+    transform: translate(-50%, -20px);
+    background: var(--accent-dark);
+    color: #fff;
+    padding: 12px 22px;
+    border-radius: 10px;
+    font-size: 14px;
+    box-shadow: 0 4px 16px var(--shadow);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    z-index: 40;
+  }
+  #toast.show {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+
+  @media (max-width: 640px) {
+    #drawer { width: 82vw; min-width: 0; max-width: none; }
+    header.topbar h1 { font-size: 15px; }
+    #legend { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header class="topbar">
+    <div>
+      <h1>Colegio · Reserva de Espacios</h1>
+      <div class="subtitle">Aulas Secundaria — 1° Nivel</div>
+    </div>
+  </header>
+
+  <div id="map-viewport">
+    <div id="map-canvas">
+      <svg id="floorplan" width="1160" height="900" viewBox="0 0 1160 900" xmlns="http://www.w3.org/2000/svg">
+
+        <!-- background paths / walkways -->
+        <line class="path-line" x1="330" y1="150" x2="650" y2="470"/>
+        <line class="path-line" x1="650" y1="470" x2="900" y2="700"/>
+        <line class="path-line" x1="330" y1="150" x2="150" y2="560"/>
+        <line class="path-line" x1="650" y1="470" x2="960" y2="330"/>
+
+        <!-- ATHLETICS FIELD (reservable) -->
+        <g class="room-group" data-id="cancha" data-name="Cancha Deportiva" data-reservable="true">
+          <rect class="room reservable" x="40" y="560" width="380" height="260" rx="6"/>
+          <text class="room-label" x="230" y="670">Cancha</text>
+          <text class="room-label small" x="230" y="690">Deportiva</text>
+        </g>
+
+        <!-- Left cluster -->
+        <g class="room-group" data-id="aula-1" data-name="Aula 1" data-reservable="true">
+          <rect class="room reservable" x="40" y="40" width="160" height="90" rx="4"/>
+          <text class="room-label" x="120" y="90">Aula 1</text>
+        </g>
+        <g class="room-group" data-id="aula-2" data-name="Aula 2" data-reservable="true">
+          <rect class="room reservable" x="40" y="130" width="160" height="90" rx="4"/>
+          <text class="room-label" x="120" y="180">Aula 2</text>
+        </g>
+        <g class="room-group" data-id="storage-a" data-name="Depósito" data-reservable="false">
+          <rect class="room non-reservable" x="40" y="220" width="160" height="35" rx="4"/>
+          <text class="room-label small" x="120" y="242">Depósito</text>
+        </g>
+        <g class="room-group" data-id="humanities" data-name="Depto. Humanidades" data-reservable="false">
+          <rect class="room non-reservable" x="40" y="255" width="160" height="65" rx="4"/>
+          <text class="room-label small" x="120" y="285">Depto.</text>
+          <text class="room-label small" x="120" y="300">Humanidades</text>
+        </g>
+
+        <!-- Atrio -->
+        <g class="room-group" data-id="atrio" data-name="Atrio" data-reservable="false">
+          <circle class="room non-reservable" cx="330" cy="150" r="75"/>
+          <circle fill="none" stroke="var(--wall)" stroke-width="2" cx="330" cy="150" r="45" opacity="0.5"/>
+          <text class="room-label" x="330" y="156">Atrio</text>
+        </g>
+
+        <!-- Aula 5 & 6 -->
+        <g class="room-group" data-id="aula-5" data-name="Aula 5" data-reservable="true">
+          <rect class="room reservable" x="270" y="40" width="140" height="90" rx="4"/>
+          <text class="room-label" x="340" y="90">Aula 5</text>
+        </g>
+        <g class="room-group" data-id="aula-6" data-name="Aula 6" data-reservable="true">
+          <rect class="room reservable" x="420" y="40" width="140" height="90" rx="4"/>
+          <text class="room-label" x="490" y="90">Aula 6</text>
+        </g>
+
+        <!-- Aula 3 & 4 -->
+        <g class="room-group" data-id="aula-3" data-name="Aula 3" data-reservable="true">
+          <rect class="room reservable" x="260" y="250" width="140" height="90" rx="4"/>
+          <text class="room-label" x="330" y="300">Aula 3</text>
+        </g>
+        <g class="room-group" data-id="aula-4" data-name="Aula 4" data-reservable="true">
+          <rect class="room reservable" x="410" y="250" width="140" height="90" rx="4"/>
+          <text class="room-label" x="480" y="300">Aula 4</text>
+        </g>
+
+        <!-- Toilet + snack -->
+        <g class="room-group" data-id="toilet-1" data-name="Servicios" data-reservable="false">
+          <rect class="room non-reservable" x="580" y="40" width="70" height="40" rx="4"/>
+          <text class="room-label small" x="615" y="64">SS.HH.</text>
+        </g>
+        <g class="room-group" data-id="snack" data-name="Snack" data-reservable="false">
+          <rect class="room non-reservable" x="660" y="40" width="90" height="40" rx="4"/>
+          <text class="room-label small" x="705" y="64">Snack</text>
+        </g>
+
+        <!-- Aula 7 & 8 -->
+        <g class="room-group" data-id="aula-7" data-name="Aula 7" data-reservable="true">
+          <rect class="room reservable" x="580" y="90" width="170" height="90" rx="4"/>
+          <text class="room-label" x="665" y="140">Aula 7</text>
+        </g>
+        <g class="room-group" data-id="aula-8" data-name="Aula 8" data-reservable="true">
+          <rect class="room reservable" x="580" y="190" width="170" height="90" rx="4"/>
+          <text class="room-label" x="665" y="240">Aula 8</text>
+        </g>
+
+        <!-- Dining room -->
+        <g class="room-group" data-id="comedor" data-name="Comedor" data-reservable="true">
+          <path class="room reservable" d="M 780 180 A 190 140 0 0 1 1040 180 Z" />
+          <text class="room-label" x="910" y="120">Comedor</text>
+          <polygon class="tree" points="895,95 905,115 885,115"/>
+          <polygon class="tree" points="925,90 935,112 915,112"/>
+        </g>
+
+        <!-- Middle admin cluster -->
+        <g class="room-group" data-id="logistics" data-name="Logística" data-reservable="false">
+          <rect class="room non-reservable" x="260" y="370" width="110" height="70" rx="4"/>
+          <text class="room-label small" x="315" y="410">Logística</text>
+        </g>
+        <g class="room-group" data-id="aspafa" data-name="ASPAFA" data-reservable="false">
+          <rect class="room non-reservable" x="370" y="370" width="110" height="70" rx="4"/>
+          <text class="room-label small" x="425" y="410">ASPAFA</text>
+        </g>
+        <g class="room-group" data-id="reception-1" data-name="Recepción" data-reservable="false">
+          <rect class="room non-reservable" x="260" y="440" width="110" height="55" rx="4"/>
+          <text class="room-label small" x="315" y="472">Recepción</text>
+        </g>
+        <g class="room-group" data-id="office-ms" data-name="Oficina Media/Superior" data-reservable="false">
+          <rect class="room non-reservable" x="370" y="440" width="110" height="55" rx="4"/>
+          <text class="room-label small" x="425" y="465">Of. Media/</text>
+          <text class="room-label small" x="425" y="478">Superior</text>
+        </g>
+        <g class="room-group" data-id="toilet-2" data-name="Servicios" data-reservable="false">
+          <rect class="room non-reservable" x="260" y="495" width="110" height="35" rx="4"/>
+          <text class="room-label small" x="315" y="516">SS.HH.</text>
+        </g>
+        <g class="room-group" data-id="toilet-3" data-name="Servicios" data-reservable="false">
+          <rect class="room non-reservable" x="370" y="495" width="110" height="35" rx="4"/>
+          <text class="room-label small" x="425" y="516">SS.HH.</text>
+        </g>
+
+        <!-- Teacher's lounge + computer rooms -->
+        <g class="room-group" data-id="teachers-lounge" data-name="Sala de Profesores" data-reservable="false">
+          <polygon class="room non-reservable" points="290,565 350,565 380,595 380,650 290,650 260,620"/>
+          <text class="room-label small" x="320" y="605">Sala</text>
+          <text class="room-label small" x="320" y="618">Profesores</text>
+        </g>
+        <g class="room-group" data-id="computer-center" data-name="Centro de Cómputo" data-reservable="true">
+          <rect class="room reservable" x="400" y="565" width="110" height="85" rx="4"/>
+          <text class="room-label small" x="455" y="600">Centro de</text>
+          <text class="room-label small" x="455" y="614">Cómputo</text>
+        </g>
+        <g class="room-group" data-id="computer-lab" data-name="Laboratorio de Cómputo" data-reservable="true">
+          <rect class="room reservable" x="520" y="565" width="150" height="85" rx="4"/>
+          <text class="room-label small" x="595" y="600">Lab. Cómputo</text>
+          <text class="room-label small" x="595" y="614">Secundaria</text>
+        </g>
+
+        <!-- Right wing -->
+        <g class="room-group" data-id="biblioteca" data-name="Biblioteca" data-reservable="true">
+          <rect class="room reservable" x="900" y="250" width="160" height="220" rx="4"/>
+          <text class="room-label" x="980" y="360">Biblioteca</text>
+        </g>
+        <g class="room-group" data-id="admin-kitchen" data-name="Admin. / Cocina" data-reservable="false">
+          <rect class="room non-reservable" x="900" y="470" width="160" height="55" rx="4"/>
+          <text class="room-label small" x="980" y="502">Admin. / Cocina</text>
+        </g>
+        <g class="room-group" data-id="reception-2" data-name="Recepción" data-reservable="false">
+          <rect class="room non-reservable" x="900" y="525" width="160" height="50" rx="4"/>
+          <text class="room-label small" x="980" y="554">Recepción</text>
+        </g>
+        <g class="room-group" data-id="admin-offices" data-name="Oficinas Admin." data-reservable="false">
+          <rect class="room non-reservable" x="900" y="600" width="80" height="70" rx="4"/>
+          <text class="room-label small" x="940" y="630">Oficinas</text>
+          <text class="room-label small" x="940" y="643">Admin.</text>
+        </g>
+        <g class="room-group" data-id="headmaster" data-name="Dirección" data-reservable="false">
+          <rect class="room non-reservable" x="980" y="600" width="80" height="70" rx="4"/>
+          <text class="room-label small" x="1020" y="630">Dirección</text>
+        </g>
+
+        <!-- decorative trees -->
+        <polygon class="tree" points="30,540 42,565 18,565"/>
+        <polygon class="tree" points="430,540 442,565 418,565"/>
+        <polygon class="tree" points="880,240 892,265 868,265"/>
+        <polygon class="tree" points="1070,240 1082,265 1058,265"/>
+
+      </svg>
+    </div>
+  </div>
+
+  <div id="zoom-controls">
+    <button class="zoom-btn" id="zoom-in" title="Acercar">+</button>
+    <button class="zoom-btn" id="zoom-out" title="Alejar">−</button>
+    <button class="zoom-btn" id="reset-view" title="Restablecer vista">Reset</button>
+  </div>
+
+  <div id="legend">
+    <div class="row"><span class="swatch" style="background:var(--room-fill)"></span> Reservable</div>
+    <div class="row"><span class="swatch" style="background:var(--room-fill-disabled)"></span> No reservable</div>
+    <div class="row"><span class="swatch" style="background:var(--room-fill-active)"></span> Seleccionado</div>
+  </div>
+
+  <div id="drawer">
+    <div id="drawer-header">
+      <div class="titles">
+        <h2 id="drawer-title">Aula</h2>
+        <p>Lunes a Viernes · 8:00 a.m. – 3:00 p.m.</p>
+      </div>
+      <button id="drawer-close" aria-label="Cerrar">&times;</button>
+    </div>
+    <div id="drawer-body">
+      <h3>Horario disponible</h3>
+      <table id="schedule">
+        <thead>
+          <tr>
+            <th class="time-col"></th>
+            <th>Lun</th><th>Mar</th><th>Mié</th><th>Jue</th><th>Vie</th>
+          </tr>
+        </thead>
+        <tbody id="schedule-body"></tbody>
+      </table>
+
+      <div id="selection-summary">
+        <strong id="summary-text"></strong>
+        <span style="color:var(--ink-soft)">Confirmá tu reserva para bloquear el espacio.</span>
+      </div>
+      <button id="confirm-btn" disabled>Selecciona un horario</button>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+</div>
+
+<script>
+(function () {
+  const DAYS = ['lun', 'mar', 'mie', 'jue', 'vie'];
+  const DAY_LABELS = { lun: 'Lunes', mar: 'Martes', mie: 'Miércoles', jue: 'Jueves', vie: 'Viernes' };
+  const HOURS = [
+    ['08:00', '09:00'], ['09:00', '10:00'], ['10:00', '11:00'], ['11:00', '12:00'],
+    ['12:00', '13:00'], ['13:00', '14:00'], ['14:00', '15:00']
+  ];
+
+  // ---- Mock schedule data per room (would come from the backend later) ----
+  const scheduleData = {};
+  function mockScheduleFor(roomId) {
+    if (scheduleData[roomId]) return scheduleData[roomId];
+    const grid = {};
+    let seed = 0;
+    for (let i = 0; i < roomId.length; i++) seed += roomId.charCodeAt(i);
+    DAYS.forEach((day, di) => {
+      grid[day] = HOURS.map((_, hi) => {
+        const v = (seed * (di + 1) * (hi + 3)) % 7;
+        return v === 0 || v === 4 ? 'booked' : 'available';
+      });
+    });
+    scheduleData[roomId] = grid;
+    return grid;
+  }
+
+  // ---- Pan & zoom ----
+  const viewport = document.getElementById('map-viewport');
+  const canvas = document.getElementById('map-canvas');
+  let scale = 0.85, tx = 0, ty = 0;
+  let isDragging = false, lastX = 0, lastY = 0, dragMoved = false;
+
+  function applyTransform() {
+    canvas.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+  }
+  function centerCanvas() {
+    const svg = document.getElementById('floorplan');
+    const w = svg.width.baseVal.value, h = svg.height.baseVal.value;
+    tx = -w / 2 * scale;
+    ty = -h / 2 * scale;
+    applyTransform();
+  }
+  window.addEventListener('resize', centerCanvas);
+  centerCanvas();
+
+  viewport.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const rect = viewport.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const prevScale = scale;
+    const delta = e.deltaY < 0 ? 1.1 : 0.9;
+    scale = Math.min(3, Math.max(0.4, scale * delta));
+    // zoom toward cursor
+    tx = mx - (mx - tx) * (scale / prevScale);
+    ty = my - (my - ty) * (scale / prevScale);
+    applyTransform();
+  }, { passive: false });
+
+  viewport.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    dragMoved = false;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    viewport.classList.add('dragging');
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    if (Math.abs(dx) > 2 || Math.abs(dy) > 2) dragMoved = true;
+    tx += dx; ty += dy;
+    lastX = e.clientX; lastY = e.clientY;
+    applyTransform();
+  });
+  window.addEventListener('mouseup', () => {
+    isDragging = false;
+    viewport.classList.remove('dragging');
+  });
+
+  document.getElementById('zoom-in').addEventListener('click', () => {
+    scale = Math.min(3, scale * 1.25);
+    applyTransform();
+  });
+  document.getElementById('zoom-out').addEventListener('click', () => {
+    scale = Math.max(0.4, scale * 0.8);
+    applyTransform();
+  });
+  document.getElementById('reset-view').addEventListener('click', () => {
+    scale = 0.85;
+    centerCanvas();
+  });
+
+  // ---- Room selection & drawer ----
+  const drawer = document.getElementById('drawer');
+  const drawerTitle = document.getElementById('drawer-title');
+  const scheduleBody = document.getElementById('schedule-body');
+  const summary = document.getElementById('selection-summary');
+  const summaryText = document.getElementById('summary-text');
+  const confirmBtn = document.getElementById('confirm-btn');
+  const legend = document.getElementById('legend');
+
+  let activeRoomEl = null;
+  let selectedSlot = null; // {day, hourIndex, el}
+  let confirmedSlots = new Set(); // "roomId|day|hourIndex"
+
+  function clearActiveRoom() {
+    if (activeRoomEl) {
+      activeRoomEl.classList.remove('active');
+      activeRoomEl = null;
+    }
+  }
+
+  function openDrawerFor(groupEl) {
+    const roomId = groupEl.dataset.id;
+    const roomName = groupEl.dataset.name;
+
+    clearActiveRoom();
+    const shape = groupEl.querySelector('.room');
+    shape.classList.add('active');
+    activeRoomEl = shape;
+
+    drawerTitle.textContent = roomName;
+    buildSchedule(roomId);
+    selectedSlot = null;
+    updateSummary();
+
+    drawer.classList.add('open');
+    legend.style.right = 'calc(25vw + 24px)';
+  }
+
+  function closeDrawer() {
+    drawer.classList.remove('open');
+    legend.style.right = '24px';
+    clearActiveRoom();
+    selectedSlot = null;
+  }
+
+  document.getElementById('drawer-close').addEventListener('click', closeDrawer);
+
+  document.querySelectorAll('.room-group').forEach((g) => {
+    if (g.dataset.reservable !== 'true') return;
+    g.querySelector('.room').addEventListener('click', () => {
+      if (dragMoved) return; // ignore click that was actually a drag
+      openDrawerFor(g);
+    });
+  });
+
+  function buildSchedule(roomId) {
+    const grid = mockScheduleFor(roomId);
+    scheduleBody.innerHTML = '';
+    HOURS.forEach((hourRange, hi) => {
+      const tr = document.createElement('tr');
+      const timeTd = document.createElement('td');
+      timeTd.className = 'time-label';
+      timeTd.textContent = hourRange[0];
+      tr.appendChild(timeTd);
+
+      DAYS.forEach((day) => {
+        const td = document.createElement('td');
+        const btn = document.createElement('button');
+        btn.className = 'slot';
+        const key = `${roomId}|${day}|${hi}`;
+        const isBooked = grid[day][hi] === 'booked';
+        const isConfirmed = confirmedSlots.has(key);
+
+        if (isConfirmed) btn.classList.add('confirmed');
+        else if (isBooked) btn.classList.add('booked');
+
+        btn.title = `${DAY_LABELS[day]} ${hourRange[0]}–${hourRange[1]}`;
+        btn.disabled = isBooked || isConfirmed;
+
+        btn.addEventListener('click', () => selectSlot(roomId, day, hi, hourRange, btn));
+        td.appendChild(btn);
+        tr.appendChild(td);
+      });
+      scheduleBody.appendChild(tr);
+    });
+  }
+
+  function selectSlot(roomId, day, hourIndex, hourRange, btn) {
+    document.querySelectorAll('.slot.selected').forEach((el) => el.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedSlot = { roomId, day, hourIndex, hourRange, btn };
+    updateSummary();
+  }
+
+  function updateSummary() {
+    if (selectedSlot) {
+      summary.classList.add('show');
+      summaryText.textContent = `${DAY_LABELS[selectedSlot.day]}, ${selectedSlot.hourRange[0]} – ${selectedSlot.hourRange[1]}`;
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = 'Confirmar reserva';
+    } else {
+      summary.classList.remove('show');
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = 'Selecciona un horario';
+    }
+  }
+
+  confirmBtn.addEventListener('click', () => {
+    if (!selectedSlot) return;
+    const key = `${selectedSlot.roomId}|${selectedSlot.day}|${selectedSlot.hourIndex}`;
+    confirmedSlots.add(key);
+    selectedSlot.btn.classList.remove('selected');
+    selectedSlot.btn.classList.add('confirmed');
+    selectedSlot.btn.disabled = true;
+    showToast(`Reserva confirmada: ${drawerTitle.textContent} · ${DAY_LABELS[selectedSlot.day]} ${selectedSlot.hourRange[0]}`);
+    selectedSlot = null;
+    updateSummary();
+  });
+
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => toast.classList.remove('show'), 2600);
+  }
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,6 @@
+*.dwg
+*.dxf
+__pycache__/
+*.pyc
+.venv/
+venv/
