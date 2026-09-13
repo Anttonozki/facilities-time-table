@@ -87,42 +87,29 @@
     overflow: visible;
   }
 
-  .room {
-    stroke: var(--wall);
-    stroke-width: 3;
-    fill: var(--room-fill);
-    transition: fill 0.15s ease;
-  }
-  .room.reservable { cursor: pointer; }
-  .room.reservable:hover { fill: var(--room-fill-hover); }
-  .room.reservable.active { fill: var(--room-fill-active); }
-  .room.non-reservable {
-    fill: var(--room-fill-disabled);
-    cursor: default;
-    opacity: 0.75;
-  }
-
-  .room-label {
-    font-size: 15px;
-    font-weight: 600;
-    fill: var(--ink);
-    text-anchor: middle;
-    pointer-events: none;
+  #floorplan-img {
+    display: block;
     user-select: none;
-  }
-  .room-label.small { font-size: 11px; font-weight: 500; fill: var(--ink-soft); }
-
-  .path-line {
-    stroke: #e0d5c0;
-    stroke-width: 14;
-    stroke-linecap: round;
-    fill: none;
-    opacity: 0.6;
+    -webkit-user-drag: none;
+    pointer-events: none;
   }
 
-  .tree {
-    fill: var(--accent);
-    opacity: 0.85;
+  .room {
+    stroke: none;
+    fill: rgba(143, 174, 130, 0);
+    transition: fill 0.15s ease, stroke 0.15s ease;
+  }
+  .room.reservable { cursor: pointer; pointer-events: all; }
+  .room.reservable:hover { fill: rgba(143, 174, 130, 0.32); }
+  .room.reservable.active {
+    fill: rgba(143, 174, 130, 0.5);
+    stroke: var(--accent-dark);
+    stroke-width: 4;
+  }
+  .room.non-reservable {
+    fill: transparent;
+    cursor: default;
+    pointer-events: none;
   }
 
   /* Zoom controls */
@@ -345,167 +332,108 @@
 
   <div id="map-viewport">
     <div id="map-canvas">
-      <svg id="floorplan" width="1160" height="900" viewBox="0 0 1160 900" xmlns="http://www.w3.org/2000/svg">
-
-        <!-- background paths / walkways -->
-        <line class="path-line" x1="330" y1="150" x2="650" y2="470"/>
-        <line class="path-line" x1="650" y1="470" x2="900" y2="700"/>
-        <line class="path-line" x1="330" y1="150" x2="150" y2="560"/>
-        <line class="path-line" x1="650" y1="470" x2="960" y2="330"/>
-
-        <!-- ATHLETICS FIELD (reservable) -->
-        <g class="room-group" data-id="cancha" data-name="Cancha Deportiva" data-reservable="true">
-          <rect class="room reservable" x="40" y="560" width="380" height="260" rx="6"/>
-          <text class="room-label" x="230" y="670">Cancha</text>
-          <text class="room-label small" x="230" y="690">Deportiva</text>
-        </g>
+      <img id="floorplan-img" src="assets/aulas-secundaria.png" width="1831" height="2375" alt="Plano Aulas Secundaria">
+      <svg id="floorplan" width="1831" height="2375" viewBox="0 0 1831 2375" xmlns="http://www.w3.org/2000/svg"
+           style="position:absolute; top:0; left:0;">
 
         <!-- Left cluster -->
         <g class="room-group" data-id="aula-1" data-name="Aula 1" data-reservable="true">
-          <rect class="room reservable" x="40" y="40" width="160" height="90" rx="4"/>
-          <text class="room-label" x="120" y="90">Aula 1</text>
+          <rect class="room reservable" x="181" y="623" width="118" height="119"/>
         </g>
         <g class="room-group" data-id="aula-2" data-name="Aula 2" data-reservable="true">
-          <rect class="room reservable" x="40" y="130" width="160" height="90" rx="4"/>
-          <text class="room-label" x="120" y="180">Aula 2</text>
+          <rect class="room reservable" x="181" y="747" width="118" height="119"/>
         </g>
         <g class="room-group" data-id="storage-a" data-name="Depósito" data-reservable="false">
-          <rect class="room non-reservable" x="40" y="220" width="160" height="35" rx="4"/>
-          <text class="room-label small" x="120" y="242">Depósito</text>
+          <rect class="room non-reservable" x="181" y="866" width="118" height="52"/>
         </g>
         <g class="room-group" data-id="humanities" data-name="Depto. Humanidades" data-reservable="false">
-          <rect class="room non-reservable" x="40" y="255" width="160" height="65" rx="4"/>
-          <text class="room-label small" x="120" y="285">Depto.</text>
-          <text class="room-label small" x="120" y="300">Humanidades</text>
+          <rect class="room non-reservable" x="181" y="918" width="119" height="80"/>
         </g>
 
         <!-- Atrio -->
         <g class="room-group" data-id="atrio" data-name="Atrio" data-reservable="false">
-          <circle class="room non-reservable" cx="330" cy="150" r="75"/>
-          <circle fill="none" stroke="var(--wall)" stroke-width="2" cx="330" cy="150" r="45" opacity="0.5"/>
-          <text class="room-label" x="330" y="156">Atrio</text>
+          <circle class="room non-reservable" cx="463" cy="695" r="100"/>
         </g>
 
         <!-- Aula 5 & 6 -->
         <g class="room-group" data-id="aula-5" data-name="Aula 5" data-reservable="true">
-          <rect class="room reservable" x="270" y="40" width="140" height="90" rx="4"/>
-          <text class="room-label" x="340" y="90">Aula 5</text>
+          <rect class="room reservable" x="603" y="623" width="126" height="134"/>
         </g>
         <g class="room-group" data-id="aula-6" data-name="Aula 6" data-reservable="true">
-          <rect class="room reservable" x="420" y="40" width="140" height="90" rx="4"/>
-          <text class="room-label" x="490" y="90">Aula 6</text>
+          <rect class="room reservable" x="733" y="623" width="126" height="134"/>
         </g>
 
         <!-- Aula 3 & 4 -->
         <g class="room-group" data-id="aula-3" data-name="Aula 3" data-reservable="true">
-          <rect class="room reservable" x="260" y="250" width="140" height="90" rx="4"/>
-          <text class="room-label" x="330" y="300">Aula 3</text>
+          <rect class="room reservable" x="331" y="844" width="126" height="160"/>
         </g>
         <g class="room-group" data-id="aula-4" data-name="Aula 4" data-reservable="true">
-          <rect class="room reservable" x="410" y="250" width="140" height="90" rx="4"/>
-          <text class="room-label" x="480" y="300">Aula 4</text>
-        </g>
-
-        <!-- Toilet + snack -->
-        <g class="room-group" data-id="toilet-1" data-name="Servicios" data-reservable="false">
-          <rect class="room non-reservable" x="580" y="40" width="70" height="40" rx="4"/>
-          <text class="room-label small" x="615" y="64">SS.HH.</text>
-        </g>
-        <g class="room-group" data-id="snack" data-name="Snack" data-reservable="false">
-          <rect class="room non-reservable" x="660" y="40" width="90" height="40" rx="4"/>
-          <text class="room-label small" x="705" y="64">Snack</text>
+          <rect class="room reservable" x="461" y="844" width="126" height="160"/>
         </g>
 
         <!-- Aula 7 & 8 -->
         <g class="room-group" data-id="aula-7" data-name="Aula 7" data-reservable="true">
-          <rect class="room reservable" x="580" y="90" width="170" height="90" rx="4"/>
-          <text class="room-label" x="665" y="140">Aula 7</text>
+          <rect class="room reservable" x="904" y="834" width="142" height="131"/>
         </g>
         <g class="room-group" data-id="aula-8" data-name="Aula 8" data-reservable="true">
-          <rect class="room reservable" x="580" y="190" width="170" height="90" rx="4"/>
-          <text class="room-label" x="665" y="240">Aula 8</text>
+          <rect class="room reservable" x="904" y="969" width="142" height="132"/>
         </g>
 
-        <!-- Dining room -->
+        <!-- Dining room (fan shape, traced from image) -->
         <g class="room-group" data-id="comedor" data-name="Comedor" data-reservable="true">
-          <path class="room reservable" d="M 780 180 A 190 140 0 0 1 1040 180 Z" />
-          <text class="room-label" x="910" y="120">Comedor</text>
-          <polygon class="tree" points="895,95 905,115 885,115"/>
-          <polygon class="tree" points="925,90 935,112 915,112"/>
+          <polygon class="room reservable" points="999,611 1001,638 1005,662 1013,685 1023,706 1036,727 1051,746 1069,763 1089,777 1110,790 1133,800 1200,812 1277,799 1342,760 1392,693 1411,618 1280,611 1252,665 1196,681 1146,653 1130,611"/>
         </g>
 
         <!-- Middle admin cluster -->
         <g class="room-group" data-id="logistics" data-name="Logística" data-reservable="false">
-          <rect class="room non-reservable" x="260" y="370" width="110" height="70" rx="4"/>
-          <text class="room-label small" x="315" y="410">Logística</text>
+          <rect class="room non-reservable" x="656" y="1081" width="82" height="70"/>
+        </g>
+        <g class="room-group" data-id="storage-b" data-name="Depósito" data-reservable="false">
+          <rect class="room non-reservable" x="741" y="1081" width="83" height="70"/>
         </g>
         <g class="room-group" data-id="aspafa" data-name="ASPAFA" data-reservable="false">
-          <rect class="room non-reservable" x="370" y="370" width="110" height="70" rx="4"/>
-          <text class="room-label small" x="425" y="410">ASPAFA</text>
+          <rect class="room non-reservable" x="656" y="1155" width="82" height="69"/>
         </g>
         <g class="room-group" data-id="reception-1" data-name="Recepción" data-reservable="false">
-          <rect class="room non-reservable" x="260" y="440" width="110" height="55" rx="4"/>
-          <text class="room-label small" x="315" y="472">Recepción</text>
+          <rect class="room non-reservable" x="741" y="1155" width="83" height="69"/>
         </g>
         <g class="room-group" data-id="office-ms" data-name="Oficina Media/Superior" data-reservable="false">
-          <rect class="room non-reservable" x="370" y="440" width="110" height="55" rx="4"/>
-          <text class="room-label small" x="425" y="465">Of. Media/</text>
-          <text class="room-label small" x="425" y="478">Superior</text>
+          <rect class="room non-reservable" x="656" y="1224" width="168" height="35"/>
         </g>
         <g class="room-group" data-id="toilet-2" data-name="Servicios" data-reservable="false">
-          <rect class="room non-reservable" x="260" y="495" width="110" height="35" rx="4"/>
-          <text class="room-label small" x="315" y="516">SS.HH.</text>
+          <rect class="room non-reservable" x="656" y="1259" width="84" height="38"/>
         </g>
         <g class="room-group" data-id="toilet-3" data-name="Servicios" data-reservable="false">
-          <rect class="room non-reservable" x="370" y="495" width="110" height="35" rx="4"/>
-          <text class="room-label small" x="425" y="516">SS.HH.</text>
+          <rect class="room non-reservable" x="740" y="1259" width="84" height="38"/>
         </g>
 
         <!-- Teacher's lounge + computer rooms -->
         <g class="room-group" data-id="teachers-lounge" data-name="Sala de Profesores" data-reservable="false">
-          <polygon class="room non-reservable" points="290,565 350,565 380,595 380,650 290,650 260,620"/>
-          <text class="room-label small" x="320" y="605">Sala</text>
-          <text class="room-label small" x="320" y="618">Profesores</text>
+          <polygon class="room non-reservable" points="783,1399 818,1399 856,1428 856,1485 818,1513 783,1513 745,1485 745,1428"/>
         </g>
-        <g class="room-group" data-id="computer-center" data-name="Centro de Cómputo" data-reservable="true">
-          <rect class="room reservable" x="400" y="565" width="110" height="85" rx="4"/>
-          <text class="room-label small" x="455" y="600">Centro de</text>
-          <text class="room-label small" x="455" y="614">Cómputo</text>
+        <g class="room-group" data-id="computer-center" data-name="Centro de Cómputo / IT" data-reservable="true">
+          <rect class="room reservable" x="862" y="1410" width="98" height="129"/>
         </g>
         <g class="room-group" data-id="computer-lab" data-name="Laboratorio de Cómputo" data-reservable="true">
-          <rect class="room reservable" x="520" y="565" width="150" height="85" rx="4"/>
-          <text class="room-label small" x="595" y="600">Lab. Cómputo</text>
-          <text class="room-label small" x="595" y="614">Secundaria</text>
+          <rect class="room reservable" x="966" y="1410" width="152" height="129"/>
         </g>
 
         <!-- Right wing -->
-        <g class="room-group" data-id="biblioteca" data-name="Biblioteca" data-reservable="true">
-          <rect class="room reservable" x="900" y="250" width="160" height="220" rx="4"/>
-          <text class="room-label" x="980" y="360">Biblioteca</text>
+        <g class="room-group" data-id="biblioteca" data-name="Biblioteca" data-reservable="false">
+          <rect class="room non-reservable" x="1446" y="834" width="167" height="311"/>
         </g>
         <g class="room-group" data-id="admin-kitchen" data-name="Admin. / Cocina" data-reservable="false">
-          <rect class="room non-reservable" x="900" y="470" width="160" height="55" rx="4"/>
-          <text class="room-label small" x="980" y="502">Admin. / Cocina</text>
+          <rect class="room non-reservable" x="1446" y="1148" width="167" height="54"/>
         </g>
         <g class="room-group" data-id="reception-2" data-name="Recepción" data-reservable="false">
-          <rect class="room non-reservable" x="900" y="525" width="160" height="50" rx="4"/>
-          <text class="room-label small" x="980" y="554">Recepción</text>
+          <rect class="room non-reservable" x="1446" y="1202" width="167" height="65"/>
         </g>
         <g class="room-group" data-id="admin-offices" data-name="Oficinas Admin." data-reservable="false">
-          <rect class="room non-reservable" x="900" y="600" width="80" height="70" rx="4"/>
-          <text class="room-label small" x="940" y="630">Oficinas</text>
-          <text class="room-label small" x="940" y="643">Admin.</text>
+          <rect class="room non-reservable" x="1361" y="1399" width="146" height="115"/>
         </g>
         <g class="room-group" data-id="headmaster" data-name="Dirección" data-reservable="false">
-          <rect class="room non-reservable" x="980" y="600" width="80" height="70" rx="4"/>
-          <text class="room-label small" x="1020" y="630">Dirección</text>
+          <rect class="room non-reservable" x="1510" y="1399" width="130" height="173"/>
         </g>
-
-        <!-- decorative trees -->
-        <polygon class="tree" points="30,540 42,565 18,565"/>
-        <polygon class="tree" points="430,540 442,565 418,565"/>
-        <polygon class="tree" points="880,240 892,265 868,265"/>
-        <polygon class="tree" points="1070,240 1082,265 1058,265"/>
 
       </svg>
     </div>
@@ -518,8 +446,8 @@
   </div>
 
   <div id="legend">
-    <div class="row"><span class="swatch" style="background:var(--room-fill)"></span> Reservable</div>
-    <div class="row"><span class="swatch" style="background:var(--room-fill-disabled)"></span> No reservable</div>
+    <div class="row"><span class="swatch" style="background:rgba(143,174,130,0.5); border:1px solid var(--accent-dark)"></span> Reservable (pasá el mouse)</div>
+    <div class="row"><span class="swatch" style="background:#d8d2c4"></span> No reservable</div>
     <div class="row"><span class="swatch" style="background:var(--room-fill-active)"></span> Seleccionado</div>
   </div>
 
@@ -583,7 +511,7 @@
   // ---- Pan & zoom ----
   const viewport = document.getElementById('map-viewport');
   const canvas = document.getElementById('map-canvas');
-  let scale = 0.85, tx = 0, ty = 0;
+  let scale = 0.45, tx = 0, ty = 0;
   let isDragging = false, lastX = 0, lastY = 0, dragMoved = false;
 
   function applyTransform() {
@@ -642,7 +570,7 @@
     applyTransform();
   });
   document.getElementById('reset-view').addEventListener('click', () => {
-    scale = 0.85;
+    scale = 0.45;
     centerCanvas();
   });
 
@@ -694,8 +622,13 @@
   document.getElementById('drawer-close').addEventListener('click', closeDrawer);
 
   document.querySelectorAll('.room-group').forEach((g) => {
+    const shape = g.querySelector('.room');
+    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    title.textContent = g.dataset.name;
+    shape.appendChild(title);
+
     if (g.dataset.reservable !== 'true') return;
-    g.querySelector('.room').addEventListener('click', () => {
+    shape.addEventListener('click', () => {
       if (dragMoved) return; // ignore click that was actually a drag
       openDrawerFor(g);
     });
